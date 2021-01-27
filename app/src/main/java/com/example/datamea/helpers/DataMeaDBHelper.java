@@ -19,19 +19,52 @@ public class DataMeaDBHelper extends SQLiteOpenHelper {
     private static final int DATABASE_VERSION = 1;
     private static final String TAG = "DatameaDBHelper";
 
+    // Database Static Tables
+    private static String TABLE_NAMES = "TABLES";
+    private static String META_DATA = "META_DATA";
+    // TABLE_NAME columns
+    private static String TABLE_ID = "TABLE_ID";
+    private static String TABLE_NAME = "TABLE_NAME";
+    // META DATA columns
+    private static String SETTING_TYPE = "SETTING_TYPE";
+    private static String SETTING_VALUE = "SETTING_VALUE";
+
+    // User tables and User info
+    // Settings
+
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
     if (oldVersion != newVersion) {
             // Simplest implementation is to drop all old tables and recreate them
-            // But there's no need to do on this project
-            onCreate(db);
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_NAMES);
+        db.execSQL("DROP TABLE IF EXISTS " + META_DATA);
+        onCreate(db);
         }
+    }
+
+    // Drops tables in TABLE_NAMES
+    public void dropDynamicTables(){
+        // TODO
     }
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        // TODO
-        //      For future references
+        // Initialize TABLE_NAMES Table
+        db.execSQL(
+                "CREATE TABLE " + TABLE_NAMES + "(" +
+                        TABLE_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                        TABLE_NAME + " text NOT NULL " +
+                        ");"
+        );
+
+        // Initialize META_DATA table
+        db.execSQL(
+                "CREATE TABLE " + META_DATA + "(" +
+                        SETTING_TYPE + " text NOT NULL, " +
+                        SETTING_VALUE + " text NOT NULL " +
+                        ");"
+        );
+
     }
 
     public static synchronized DataMeaDBHelper getInstance(Context context) {
@@ -125,6 +158,33 @@ public class DataMeaDBHelper extends SQLiteOpenHelper {
         Specific functions to modifying the table(s) within the database
      */
 
+    public ArrayList<VirtualTable> getTables() {
+        SQLiteDatabase db = getDB();
+        ArrayList<VirtualTable> vTables = new ArrayList<VirtualTable>();
+
+        db.beginTransaction();
+        try {
+            String sql = "SELECT * FROM TABLE_NAMES;";
+
+            Cursor cursor_tables = doQuery(sql);
+            if (cursor_tables.moveToFirst()) {
+                do {
+                    // Retrieve table rows using a table's name
+                    String tableName = cursor_tables.getString(cursor_tables.getColumnIndex(TABLE_NAME));
+                    VirtualTable tempVTable = getAllRows(tableName);
+                    vTables.add(tempVTable);
+                } while (cursor_tables.moveToNext());
+            } else {
+                Log.d(TAG, "No active tables");
+            }
+        } catch (Exception e) {
+
+        } finally {
+            db.endTransaction();
+        }
+        return vTables;
+    }
+
     /* Method to create Table on the database given a VirtualTable */
     public void createTable(VirtualTable vTable) {
         SQLiteDatabase db = getDB();
@@ -141,7 +201,69 @@ public class DataMeaDBHelper extends SQLiteOpenHelper {
 
         sql += ");";
 
-        db.execSQL(sql);
+
+        doQuery(sql);
+    }
+
+
+    public VirtualTable getAllRows(String table_name) {
+        SQLiteDatabase db = getDB();
+        Log.d(TAG, "Getting All rows");
+
+        VirtualTable copyVTable = new VirtualTable(table_name);
+        String ID_COLUMN = table_name+"_ID";
+
+        db.beginTransaction();
+        try {
+            String sql = "SELECT * FROM "+table_name;
+            Cursor rowCursor = doQuery(sql);
+            if(rowCursor.moveToFirst()) {
+                String [] columns = rowCursor.getColumnNames();
+                do {
+                    int id = Integer.parseInt(rowCursor.getString(rowCursor.getColumnIndex(ID_COLUMN)));
+                    ArrayList<String> row = new ArrayList<String>();
+                    // Retrieve each row element from the table using the column name
+                    for(int i = 0; i < columns.length; i++) {
+                        String columnName = columns[i];
+                        String temp = rowCursor.getString(rowCursor.getColumnIndex(columnName));
+                        row.add(temp);
+                    }
+                    VirtualRow  vRow = new VirtualRow(id, row);
+                    if (!copyVTable.addRow(vRow)) {
+                        //throw new IllegalArgumentException();
+                        Log.d(TAG, "Number of columns and number of row entries are not the same size");
+                    } else {
+                        Log.d(TAG, "Successfull addition");
+                    }
+                } while (rowCursor.moveToNext());
+            } else {
+                Log.d(TAG, "Empty Table");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, e.getStackTrace().toString());
+        } finally {
+            db.endTransaction();
+        }
+        Log.d(TAG, "Completed all Rows");
+        return copyVTable;
+    }
+
+    /* Method to check whether the database table and the virtual table provide are the same */
+    public void updateTableData(VirtualTable vTable) {
+        SQLiteDatabase db = getDB();
+        Log.d(TAG, "Running UpdateTableData");
+        VirtualTable copyVTable = getAllRows(vTable);
+
+
+        db.beginTransaction();
+        try {
+
+        } catch (Exception e) {
+
+        } finally {
+            db.endTransaction();
+        }
+
     }
 
 
@@ -262,6 +384,7 @@ public class DataMeaDBHelper extends SQLiteOpenHelper {
                         TABLE_NOTES);
 
         Cursor notesCursor = doQuery(NOTE_SELECT_QUERY);
+
         try {
             if (notesCursor.moveToFirst()) {
                 do {

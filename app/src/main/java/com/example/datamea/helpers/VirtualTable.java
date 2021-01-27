@@ -7,13 +7,20 @@ import java.util.ArrayList;
 class VirtualTable {
     private String Name;
     private ArrayList<String> columns;
-    private ArrayList<ArrayList<String>> rows;
+    private ArrayList<VirtualRow> rows;
 
-    /* Initial Virtaul Table with Table name and table columns */
+    /* Initial Virtual Table with Table name and table columns */
     VirtualTable (String n, ArrayList<String> col) {
         columns = col;
         Name = n;
-        rows = new ArrayList<ArrayList<String>>();
+        rows = new ArrayList<VirtualRow>();
+    }
+
+    /* Initial Virtual Table with Table name and table columns */
+    VirtualTable (String n) {
+        columns = new ArrayList<String>();
+        Name = n;
+        rows = new ArrayList<VirtualRow>();
     }
 
     public String getName() {
@@ -32,7 +39,7 @@ class VirtualTable {
         return columns;
     }
 
-    public ArrayList<ArrayList<String>> getRows() {
+    public ArrayList<VirtualRow> getRows() {
         return rows;
     }
 
@@ -40,12 +47,21 @@ class VirtualTable {
      *      Returns true on success
      *      Returns false on failure
      */
-    Boolean addRow (ArrayList<String> row) {
-        if (row.size() != getColumnCount())
+    Boolean addRow (VirtualRow row) {
+        if (row.getColSize() != getColumnCount())
             return false;
         rows.add(row);
         return true;
     }
 
+    Boolean removeRow (VirtualRow row) {
+        for (int i = 0; i < rows.size(); i++) {
+            if (rows.get(i).getId() == row.getId()) {
+                rows.remove(i);
+                return true;
+            }
+        }
+        return false;
+    }
 
 }
